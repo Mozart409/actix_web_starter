@@ -1,0 +1,5 @@
+/target
+.env
+project.db
+project.db-shm
+project.db-wal
