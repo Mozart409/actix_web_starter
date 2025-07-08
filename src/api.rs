@@ -7,7 +7,7 @@ use color_eyre::{
 use sqlx::SqlitePool;
 use std::fmt;
 
-use crate::{AppState, db};
+use crate::AppState;
 
 // Custom error wrapper that implements ResponseError
 #[derive(Debug)]
