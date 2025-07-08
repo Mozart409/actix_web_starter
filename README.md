@@ -18,7 +18,7 @@ A starter template for building web applications with Actix Web framework in Rus
 
 1. Clone this repository:
 ```bash
-git clone github.com/mozart409/actix_web_starter
+git clone https://github.com/Mozart409/actix_web_starter.git
 cd actix_web_starter
 ```
 
