@@ -104,7 +104,6 @@ mod tests {
     use super::*;
     use actix_web::{App, test, web};
     use sqlx::SqlitePool;
-    use std::path::Path;
     use tempfile::tempdir;
 
     async fn create_test_db() -> SqlitePool {
