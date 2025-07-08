@@ -98,3 +98,140 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .route("/db-demo", web::post().to(db_demo_handler)),
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{App, test, web};
+    use sqlx::SqlitePool;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    async fn create_test_db() -> SqlitePool {
+        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+
+        // Create demo table
+        sqlx::query("CREATE TABLE demo (id INTEGER PRIMARY KEY, name TEXT)")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        pool
+    }
+
+    async fn create_test_app_state() -> AppState {
+        let db_pool = create_test_db().await;
+        AppState { db_pool }
+    }
+
+    #[actix_web::test]
+    async fn test_health_check_success() {
+        let app_state = create_test_app_state().await;
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(app_state))
+                .route("/health", web::get().to(health_check_handler)),
+        )
+        .await;
+
+        let req = test::TestRequest::get().uri("/health").to_request();
+        let resp = test::call_service(&app, req).await;
+
+        assert!(resp.status().is_success());
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["status"], "All systems operational");
+        assert!(body["timestamp"].is_string());
+    }
+
+    #[actix_web::test]
+    async fn test_db_demo_success() {
+        let app_state = create_test_app_state().await;
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(app_state))
+                .route("/db-demo", web::post().to(db_demo_handler)),
+        )
+        .await;
+
+        let req = test::TestRequest::post().uri("/db-demo").to_request();
+        let resp = test::call_service(&app, req).await;
+
+        assert!(resp.status().is_success());
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["message"], "Database demo successful");
+        assert!(body["records"].is_array());
+        assert!(body["timestamp"].is_string());
+
+        // Check that a record was actually inserted
+        let records = body["records"].as_array().unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0][1], "Demo Entry");
+    }
+
+    #[actix_web::test]
+    async fn test_db_demo_multiple_inserts() {
+        let app_state = create_test_app_state().await;
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(app_state))
+                .route("/db-demo", web::post().to(db_demo_handler)),
+        )
+        .await;
+
+        // Make multiple requests
+        for _ in 0..3 {
+            let req = test::TestRequest::post().uri("/db-demo").to_request();
+            let resp = test::call_service(&app, req).await;
+            assert!(resp.status().is_success());
+        }
+
+        // Check final state
+        let req = test::TestRequest::post().uri("/db-demo").to_request();
+        let resp = test::call_service(&app, req).await;
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        let records = body["records"].as_array().unwrap();
+        assert_eq!(records.len(), 4); // 3 previous + 1 current
+    }
+
+    #[actix_web::test]
+    async fn test_favicon_handler() {
+        // Create a temporary favicon file for testing
+        let temp_dir = tempdir().unwrap();
+        let static_dir = temp_dir.path().join("static");
+        std::fs::create_dir_all(&static_dir).unwrap();
+        let favicon_path = static_dir.join("logo.png");
+        std::fs::write(&favicon_path, b"fake_png_data").unwrap();
+
+        // Change to temp directory for test
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(temp_dir.path()).unwrap();
+
+        let app = test::init_service(App::new().service(favicon_handler)).await;
+
+        let req = test::TestRequest::get().uri("/favicon.ico").to_request();
+        let resp = test::call_service(&app, req).await;
+
+        assert!(resp.status().is_success());
+
+        // Restore original directory
+        std::env::set_current_dir(original_dir).unwrap();
+    }
+
+    #[test]
+    async fn test_app_error_display() {
+        let report = color_eyre::eyre::eyre!("Test error message");
+        let app_error = AppError(report);
+
+        assert_eq!(format!("{}", app_error), "Test error message");
+    }
+
+    #[test]
+    async fn test_app_error_from_report() {
+        let report = color_eyre::eyre::eyre!("Test error");
+        let app_error: AppError = report.into();
+
+        assert_eq!(format!("{}", app_error), "Test error");
+    }
+}
