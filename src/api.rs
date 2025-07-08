@@ -4,9 +4,10 @@ use color_eyre::{
     Result,
     eyre::{Context, Report},
 };
+use sqlx::SqlitePool;
 use std::fmt;
 
-use crate::AppState;
+use crate::{AppState, db};
 
 // Custom error wrapper that implements ResponseError
 #[derive(Debug)]
@@ -36,8 +37,10 @@ impl From<Report> for AppError {
 }
 
 // Health check handler
-async fn health_check_handler() -> ActixResult<impl Responder, AppError> {
-    let status = check_system_health().context("Health check failed")?;
+async fn health_check_handler(state: web::Data<AppState>) -> ActixResult<impl Responder, AppError> {
+    let status = check_system_health(&state.db_pool)
+        .await
+        .context("Health check failed")?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": status,
@@ -46,8 +49,13 @@ async fn health_check_handler() -> ActixResult<impl Responder, AppError> {
 }
 
 // Example function that returns color_eyre::Result
-fn check_system_health() -> Result<String> {
-    // Your health check logic here
+async fn check_system_health(db_pool: &SqlitePool) -> Result<String> {
+    // Check if database is reachable
+    sqlx::query("SELECT 1")
+        .execute(db_pool)
+        .await
+        .context("Database connection failed")?;
+
     Ok("All systems operational".to_string())
 }
 
