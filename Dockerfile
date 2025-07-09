@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 # FROM debian:bookworm-slim
 FROM alpine:3.22
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache curl
 COPY --from=builder /app/target/release/actix_web_starter /usr/local/bin/actix_web_starter
 WORKDIR /app
 EXPOSE 8080
