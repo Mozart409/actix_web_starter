@@ -8,6 +8,7 @@ FROM base AS planner
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
+COPY migrations ./migrations
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo chef prepare --recipe-path recipe.json
@@ -20,11 +21,13 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo chef cook --release --recipe-path recipe.json
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
+COPY migrations ./migrations
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo build --release --bin actix_web_starter
 
-FROM debian:bookworm-slim
+# FROM debian:bookworm-slim
+FROM alpine:3.22
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/actix_web_starter /usr/local/bin/actix_web_starter
 WORKDIR /app
