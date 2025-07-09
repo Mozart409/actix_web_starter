@@ -4,15 +4,23 @@ A starter template for building web applications with Actix Web framework in Rus
 
 ## Features
 
-- Fast and lightweight web server
-- Built with Actix Web framework
-- Ready-to-use project structure
-- Easy to extend and customize
+- **Fast and lightweight web server** built with Actix Web
+- **SQLite database** integration with SQLx and automatic migrations
+- **Error handling** with color-eyre for better debugging
+- **Health check endpoints** for monitoring
+- **Static file serving** with file listing support
+- **Comprehensive logging** with env_logger
+- **Hot reload development** with bacon
+- **Docker support** with multi-stage builds and health checks
+- **GitHub Actions CI/CD** with Docker image publishing
+- **Development tooling** with just recipes and comprehensive testing
 
 ## Prerequisites
 
 - Rust (latest stable version)
 - Cargo package manager
+- SQLite (for local development)
+- Docker (optional, for containerization)
 
 ## Getting Started
 
@@ -22,36 +30,141 @@ git clone https://github.com/Mozart409/actix_web_starter.git
 cd actix_web_starter
 ```
 
-2. Build the project:
+2. Set up environment variables:
 ```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+3. Run the application:
+```bash
+# Using cargo
+cargo run
+
+# Using just (recommended for development)
+just
+
+# Using bacon for hot reload
 bacon run
 ```
 
-3. Open your browser and navigate to `http://localhost:8080`
+4. Open your browser and navigate to `http://localhost:8080`
 
 ## Project Structure
 
 ```
 actix_web_starter/
 ├── src/
-│   └── main.rs
-├── Cargo.toml
+│   ├── api.rs              # API handlers and routing
+│   ├── db.rs              # Database connection and setup
+│   └── main.rs            # Application entry point
+├── migrations/            # SQLx database migrations
+│   ├── 20250708091103_init.up.sql
+│   └── 20250708091103_init.down.sql
+├── static/                # Static assets (served at /static)
+├── .github/workflows/     # GitHub Actions CI/CD
+│   └── docker-publish.yml
+├── build.rs              # SQLx build script
+├── justfile              # Development commands
+├── bacon.toml            # Bacon configuration
+├── Dockerfile            # Multi-stage Docker build
+├── docker-bake.hcl       # Docker Bake configuration
+├── .env.example          # Environment variables template
+├── Cargo.toml            # Dependencies and metadata
 └── README.md
 ```
 
+## API Endpoints
+
+- `GET /` - Root endpoint (serves static files)
+- `GET /favicon.ico` - Favicon handler
+- `GET /api/v1/health` - Health check endpoint
+- `POST /api/v1/db-demo` - Database demo endpoint
+- `GET /static/*` - Static file serving with directory listing
+
 ## Development
 
-- `bacon run` - Run the development server
-- `cargo test` - Run tests
-- `cargo build --release` - Build for production
+### Using Just (Recommended)
+```bash
+just          # Run the development server with hot reload
+just check    # Run cargo check
+just clear    # Clear the terminal
+```
 
-## Contributing
+### Using Bacon
+```bash
+bacon run     # Run with hot reload
+bacon check   # Check compilation
+bacon clippy  # Run clippy lints
+bacon test    # Run tests
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+### Using Cargo
+```bash
+cargo run                    # Run the application
+cargo test                   # Run tests
+cargo build --release        # Build for production
+cargo clippy                 # Run linter
+cargo fmt                    # Format code
+```
 
-## License
+## Configuration
 
-This project is licensed under the MIT License.
+The application uses environment variables for configuration. Copy `.env.example` to `.env` and modify:
+
+```bash
+DATABASE_URL=sqlite://project.db
+RUST_LOG=actix_web=info,actix_server=info,db=info
+RUST_BACKTRACE=0
+```
+
+## Database
+
+The project uses SQLite with SQLx for database operations:
+
+- **Migrations**: Located in `migrations/` directory
+- **Auto-migration**: Runs automatically on startup
+- **Connection pooling**: Configured with a maximum of 5 connections
+- **WAL mode**: Enabled for better concurrent performance
+
+## Docker
+
+### Local Development
+```bash
+docker build -t actix_web_starter .
+docker run -p 8080:8080 actix_web_starter
+```
+
+### Using Docker Bake
+```bash
+docker buildx bake
+docker buildx bake image-all  # Build for multiple platforms
+```
+
+### Production Deployment
+The Docker image is optimized for production with:
+- Multi-stage builds for smaller image size
+- Health checks built-in
+- Non-root user execution
+- Support for multiple architectures (amd64, arm64, armv6, armv7)
+
+## Testing
+
+Run the comprehensive test suite:
+```bash
+cargo test
+```
+
+The project includes:
+- Unit tests for individual components
+- Integration tests for API endpoints
+- Database tests with in-memory SQLite
+- Error handling tests
+
+## CI/CD
+
+GitHub Actions workflow automatically:
+- Builds and tests the application
+- Creates Docker images for multiple platforms
+- Publishes to GitHub Container Registry
+- Signs images with cosign for security
