@@ -265,7 +265,7 @@ mod tests {
         let report = color_eyre::eyre::eyre!("Test error message");
         let app_error = AppError(report);
 
-        assert_eq!(format!("{}", app_error), "Test error message");
+        assert_eq!(format!("{app_error}"), "Test error message");
     }
 
     #[test]
@@ -273,6 +273,6 @@ mod tests {
         let report = color_eyre::eyre::eyre!("Test error");
         let app_error: AppError = report.into();
 
-        assert_eq!(format!("{}", app_error), "Test error");
+        assert_eq!(format!("{app_error}"), "Test error");
     }
 }

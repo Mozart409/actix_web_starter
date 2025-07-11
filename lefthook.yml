@@ -1,0 +1,31 @@
+# pre-push:
+#   jobs:
+#     - name: packages audit
+#       tags:
+#         - frontend
+#         - security
+#       run: yarn audit
+#
+#     - name: gems audit
+#       tags:
+#         - backend
+#         - security
+#       run: bundle audit
+#
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: Clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+
+    - name: Format check
+      run: cargo fmt --all -- --check
+      stage_fixed: true
+
+    - name: Run tests
+      run: cargo test --verbose --all-features
+      stage_fixed: true
+
+    - name: Build project
+      run: cargo build --release --verbose

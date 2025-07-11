@@ -63,8 +63,5 @@ jobs:
       - name: Run tests
         run: cargo test --verbose --all-features
 
-      - name: Run tests with release profile
-        run: cargo test --release --verbose --all-features
-
       - name: Build project
         run: cargo build --release --verbose
