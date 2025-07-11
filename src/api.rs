@@ -4,10 +4,32 @@ use color_eyre::{
     Result,
     eyre::{Context, Report},
 };
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use std::fmt;
+use utoipa::ToSchema;
 
 use crate::AppState;
+
+// Schema definitions for OpenAPI
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct HealthResponse {
+    pub status: String,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct DbDemoResponse {
+    pub message: String,
+    pub records: Vec<(i64, String)>,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct ErrorResponse {
+    pub error: String,
+    pub message: String,
+}
 
 // Custom error wrapper that implements ResponseError
 #[derive(Debug)]
@@ -37,15 +59,26 @@ impl From<Report> for AppError {
 }
 
 // Health check handler
-async fn health_check_handler(state: web::Data<AppState>) -> ActixResult<impl Responder, AppError> {
+#[utoipa::path(
+    get,
+    path = "/api/v1/health",
+    responses(
+        (status = 200, description = "Health check successful", body = HealthResponse),
+        (status = 500, description = "Internal server error", body = ErrorResponse)
+    ),
+    tag = "health"
+)]
+pub async fn health_check_handler(
+    state: web::Data<AppState>,
+) -> ActixResult<impl Responder, AppError> {
     let status = check_system_health(&state.db_pool)
         .await
         .context("Health check failed")?;
 
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "status": status,
-        "timestamp": chrono::Utc::now()
-    })))
+    Ok(HttpResponse::Ok().json(HealthResponse {
+        status,
+        timestamp: chrono::Utc::now(),
+    }))
 }
 
 // Example function that returns color_eyre::Result
@@ -60,7 +93,16 @@ async fn check_system_health(db_pool: &SqlitePool) -> Result<String> {
 }
 
 // Database demo endpoint
-async fn db_demo_handler(data: web::Data<AppState>) -> ActixResult<impl Responder, AppError> {
+#[utoipa::path(
+    post,
+    path = "/api/v1/db-demo",
+    responses(
+        (status = 200, description = "Database demo successful", body = DbDemoResponse),
+        (status = 500, description = "Internal server error", body = ErrorResponse)
+    ),
+    tag = "database"
+)]
+pub async fn db_demo_handler(data: web::Data<AppState>) -> ActixResult<impl Responder, AppError> {
     // Insert a demo record
     sqlx::query("INSERT INTO demo (name) VALUES (?)")
         .bind("Demo Entry")
@@ -75,11 +117,11 @@ async fn db_demo_handler(data: web::Data<AppState>) -> ActixResult<impl Responde
             .await
             .context("Failed to fetch demo records")?;
 
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "message": "Database demo successful",
-        "records": records,
-        "timestamp": chrono::Utc::now()
-    })))
+    Ok(HttpResponse::Ok().json(DbDemoResponse {
+        message: "Database demo successful".to_string(),
+        records,
+        timestamp: chrono::Utc::now(),
+    }))
 }
 
 // Favicon endpoint

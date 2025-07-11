@@ -1,5 +1,3 @@
-mod api;
-mod db;
 use actix_files::Files;
 use actix_web::{
     App, HttpServer,
@@ -7,13 +5,12 @@ use actix_web::{
     web,
 };
 use color_eyre::{Result, eyre::Context};
-use sqlx::SqlitePool;
+use utoipa::OpenApi;
+use utoipa_scalar::{Scalar, Servable};
+
+use actix_web_starter::{ApiDoc, AppState, api, db};
 
 const STATIC_DIR: &str = concat![env!("CARGO_MANIFEST_DIR"), "/static"];
-
-struct AppState {
-    db_pool: SqlitePool,
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -38,6 +35,11 @@ async fn main() -> Result<()> {
                     .prefer_utf8(true),
             )
             .service(api::favicon_handler)
+            .service(Scalar::with_url("/scalar", ApiDoc::openapi()))
+            .service(
+                web::resource("/api-docs/openapi.json")
+                    .route(web::get().to(|| async { web::Json(ApiDoc::openapi()) })),
+            )
             .configure(api::configure_routes)
             .wrap(middleware::Compress::default())
             .wrap(middleware::NormalizePath::trim())
