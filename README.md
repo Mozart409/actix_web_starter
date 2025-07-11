@@ -2,6 +2,11 @@
 
 A starter template for building web applications with Actix Web framework in Rust.
 
+
+![API Documentation](./static/scalar.png)
+
+*Interactive API documentation powered by Scalar*
+
 ## Features
 
 - **Fast and lightweight web server** built with Actix Web
